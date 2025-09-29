@@ -1,0 +1,405 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sehat Mitra — Rural Digital Health Platform</title>
+  <meta name="description" content="Sehat Mitra: Offline-first mobile-web prototype for ASHA/PHC/Doctor workflows, voice input, multilingual and auto-sync demo." />
+  <style>
+    /* ---------- Simple Reset ---------- */
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Inter, system-ui, Arial, sans-serif}
+    body{background:#f5f7fb;color:#102a43;line-height:1.5}
+    .container{max-width:1100px;margin:28px auto;padding:20px}header{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#2d9cdb,#7b61ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+h1{font-size:20px}
+nav a{margin-left:12px;color:#2d9cdb;text-decoration:none;font-weight:600}
+
+/* ---------- Layout ---------- */
+.grid{display:grid;grid-template-columns:300px 1fr;gap:20px;margin-top:18px}
+.card{background:white;border-radius:12px;box-shadow:0 6px 18px rgba(16,42,67,0.06);padding:18px}
+
+/* ---------- Sidebar ---------- */
+.sidebar h3{font-size:14px;margin-bottom:10px}
+.menu{display:flex;flex-direction:column;gap:8px}
+.menu button{background:transparent;border:1px solid transparent;padding:10px;border-radius:8px;text-align:left;cursor:pointer}
+.menu button.active{background:#eef6ff;border-color:#d6eaff}
+
+/* ---------- Main ---------- */
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.toolbar .status{font-size:13px}
+.panel{min-height:420px}
+
+/* ---------- Forms & Tables ---------- */
+label{display:block;font-size:13px;margin-bottom:6px}
+input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #d6dee9;margin-bottom:12px}
+.btn{display:inline-block;padding:10px 14px;border-radius:10px;background:#2d9cdb;color:white;border:none;cursor:pointer}
+.btn.ghost{background:transparent;color:#2d9cdb;border:1px solid #d6eaff}
+
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:10px;border-bottom:1px solid #eef3f8;text-align:left}
+
+/* ---------- Small helpers ---------- */
+.muted{color:#5b6b78;font-size:13px}
+.chip{display:inline-block;background:#eef6ff;color:#2d9cdb;padding:6px 10px;border-radius:999px;font-weight:700}
+
+footer{margin-top:18px;text-align:center;color:#6c7a86;font-size:13px}
+
+/* responsive */
+@media(max-width:900px){.grid{grid-template-columns:1fr}.sidebar{order:2}}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">SM</div>
+        <div>
+          <h1>Sehat Mitra</h1>
+          <div class="muted">Rural Digital Health Platform — Offline-first prototype</div>
+        </div>
+      </div>
+      <nav>
+        <a href="#">Docs</a>
+        <a href="#">Help</a>
+        <a href="#" id="langToggle">हिन्दी</a>
+      </nav>
+    </header><main class="grid">
+  <aside class="sidebar card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div class="muted">Logged in as</div>
+        <div id="userRoleDisplay"><strong>Guest</strong></div>
+      </div>
+      <div>
+        <button class="btn ghost" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+
+    <div class="menu">
+      <button data-route="dashboard" class="active">Dashboard</button>
+      <button data-route="patientForm">Register Patient</button>
+      <button data-route="patients">Patient Records</button>
+      <button data-route="teleconsult">Telemedicine</button>
+      <button data-route="sync">Sync & Logs</button>
+      <button data-route="settings">Settings</button>
+    </div>
+
+    <hr style="margin:12px 0;border:none;border-top:1px solid #eef3f8" />
+    <div class="muted">Quick Login (Demo)</div>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost" onclick="demoLogin('asha')">ASHA</button>
+      <button class="btn ghost" onclick="demoLogin('phc')">PHC</button>
+      <button class="btn ghost" onclick="demoLogin('doctor')">Doctor</button>
+    </div>
+  </aside>
+
+  <section class="main card">
+    <div class="toolbar">
+      <div class="status">Status: <span id="onlineStatus">--</span> • Local Records: <span id="localCount">0</span></div>
+      <div>
+        <button class="btn" id="voiceBtn">🎤 Voice Input</button>
+        <button class="btn ghost" id="exportBtn">Export Data</button>
+      </div>
+    </div>
+
+    <div class="panel" id="appPanel">
+      <!-- Dynamic content inserts here -->
+    </div>
+  </section>
+</main>
+
+<footer>
+  Sehat Mitra — Built for rural-first, offline-capable healthcare. Prototype for SIH / academic submission.
+</footer>
+
+  </div>  <script>
+    /* ------------------- App Data & Utilities ------------------- */
+    const APP_NAME = 'sehat_mitra_v1';
+    const i18n = {
+      en: {
+        dashboard: 'Dashboard',
+        register: 'Register Patient',
+        patients: 'Patient Records',
+        tele: 'Telemedicine',
+        sync: 'Sync & Logs',
+        settings: 'Settings'
+      },
+      hi: {
+        dashboard: 'डैशबोर्ड',
+        register: 'रोगी पंजीकरण',
+        patients: 'रोगी रिकॉर्ड',
+        tele: 'टेलीमेडिसिन',
+        sync: 'सिंक और लॉग',
+        settings: 'सेटिंग्स'
+      }
+    };
+
+    // Simple local DB using localStorage
+    function dbKey(key){return `${APP_NAME}::${key}`}
+    function loadPatients(){
+      try{const raw = localStorage.getItem(dbKey('patients')); return raw?JSON.parse(raw):[] }catch(e){console.error(e); return []}
+    }
+    function savePatients(list){localStorage.setItem(dbKey('patients'), JSON.stringify(list));}
+
+    function addLocalLog(msg){
+      const logs = JSON.parse(localStorage.getItem(dbKey('logs'))||'[]');
+      logs.unshift({ts:new Date().toISOString(),msg});
+      localStorage.setItem(dbKey('logs'), JSON.stringify(logs.slice(0,200)));
+    }
+
+    function render(template){document.getElementById('appPanel').innerHTML = template}
+
+    /* ------------------- Routing & UI ------------------- */
+    const routes = document.querySelectorAll('.menu button');
+    routes.forEach(btn=>btn.addEventListener('click',()=>{ routes.forEach(b=>b.classList.remove('active')); btn.classList.add('active'); navigate(btn.dataset.route)}));
+
+    function navigate(route){
+      if(route==='dashboard') renderDashboard();
+      if(route==='patientForm') renderPatientForm();
+      if(route==='patients') renderPatients();
+      if(route==='teleconsult') renderTelemedicine();
+      if(route==='sync') renderSync();
+      if(route==='settings') renderSettings();
+    }
+
+    /* ------------------- Dashboard ------------------- */
+    function renderDashboard(){
+      const patients = loadPatients();
+      const recent = patients.slice(0,5);
+      render(`
+        <h2>Dashboard</h2>
+        <div style="display:flex;gap:12px;margin-top:12px">
+          <div style="flex:1" class="card">
+            <h3>Local Patients</h3>
+            <div style="font-size:28px;font-weight:800">${patients.length}</div>
+            <div class="muted">Stored on this device</div>
+          </div>
+          <div style="flex:1" class="card">
+            <h3>Last Sync</h3>
+            <div id="lastSync">--</div>
+            <div class="muted">Automatic sync when online</div>
+          </div>
+        </div>
+
+        <div style="margin-top:18px" class="card">
+          <h3>Recent Visits</h3>
+          ${recent.length?`<table><thead><tr><th>Name</th><th>Age</th><th>Contact</th><th>Date</th></tr></thead><tbody>${recent.map(p=>`<tr><td>${p.name}</td><td>${p.age}</td><td>${p.phone||'-'}</td><td>${new Date(p.created).toLocaleString()}</td></tr>`).join('')}</tbody></table>`:'<div class="muted">No records yet.</div>'}
+        </div>
+      `)
+      updateCounts();
+    }
+
+    /* ------------------- Patient Form ------------------- */
+    function renderPatientForm(){
+      render(`
+        <h2>Register Patient</h2>
+        <form id="patientForm">
+          <label>Name</label>
+          <input required name="name" placeholder="Patient name" />
+          <label>Age</label>
+          <input required name="age" type="number" />
+          <label>Gender</label>
+          <select name="gender"><option>Female</option><option>Male</option><option>Other</option></select>
+          <label>Phone</label>
+          <input name="phone" placeholder="Mobile number" />
+          <label>Village / Address</label>
+          <input name="address" placeholder="Village, block" />
+          <label>Notes (voice input supported)</label>
+          <textarea name="notes" id="notes" rows="4"></textarea><div style="display:flex;gap:8px">
+        <button class="btn" type="submit">Save Locally</button>
+        <button class="btn ghost" type="button" id="saveAndSync">Save & Try Sync</button>
+      </div>
+    </form>
+  `)
+
+  document.getElementById('patientForm').addEventListener('submit', (e)=>{
+    e.preventDefault(); const fm = e.target; const data = Object.fromEntries(new FormData(fm)); data.created = new Date().toISOString();
+    const patients = loadPatients(); patients.unshift(data); savePatients(patients); addLocalLog('Patient saved locally: '+data.name); alert('Saved locally — will sync when online'); updateCounts();
+    fm.reset();
+  });
+
+  document.getElementById('saveAndSync').addEventListener('click', ()=>{
+    const fm = document.getElementById('patientForm'); const data = Object.fromEntries(new FormData(fm)); data.created = new Date().toISOString(); const patients = loadPatients(); patients.unshift(data); savePatients(patients); addLocalLog('Patient saved locally (manual sync attempt): '+data.name); updateCounts(); trySync(); fm.reset();
+  });
+}
+
+/* ------------------- Patients List ------------------- */
+function renderPatients(){
+  const patients = loadPatients();
+  render(`
+    <h2>Patient Records</h2>
+    <div class="muted">All records stored on this device. Records will auto-sync when internet is available.</div>
+    ${patients.length?`<table><thead><tr><th>Name</th><th>Age</th><th>Phone</th><th>Created</th></tr></thead><tbody>${patients.map((p,i)=>`<tr><td><a href="#" onclick="viewPatient(${i})">${p.name}</a></td><td>${p.age}</td><td>${p.phone||'-'}</td><td>${new Date(p.created).toLocaleString()}</td></tr>`).join('')}</tbody></table>`:'<div class="muted">No patient records found.</div>'}
+  `)
+}
+
+window.viewPatient = function(i){
+  const p = loadPatients()[i]; if(!p) return alert('Record not found');
+  render(`
+    <h2>Patient — ${p.name}</h2>
+    <div class="muted">Created: ${new Date(p.created).toLocaleString()}</div>
+    <div style="margin-top:12px" class="card">
+      <p><strong>Age:</strong> ${p.age}</p>
+      <p><strong>Gender:</strong> ${p.gender}</p>
+      <p><strong>Phone:</strong> ${p.phone||'-'}</p>
+      <p><strong>Address:</strong> ${p.address||'-'}</p>
+      <p><strong>Notes:</strong><br/>${p.notes||'-'}</p>
+    </div>
+    <div style="margin-top:8px"><button class="btn" onclick="navigate('patients')">Back</button></div>
+  `)
+}
+
+/* ------------------- Telemedicine Mock ------------------- */
+function renderTelemedicine(){
+  render(`
+    <h2>Telemedicine</h2>
+    <div class="muted">This demo simulates a teleconsult flow. In production, integrate with video service / NDHM APIs.</div>
+    <div style="display:flex;gap:12px;margin-top:12px">
+      <div style="flex:1" class="card">
+        <h3>Start Consultation</h3>
+        <label>Select Patient</label>
+        <select id="telePatient">
+          <option value="">-- Select --</option>
+          ${loadPatients().map((p,i)=>`<option value="${i}">${p.name} — ${p.age}</option>`).join('')}
+        </select>
+        <label>Reason</label>
+        <input id="teleReason" placeholder="e.g., fever, cough" />
+        <div style="margin-top:8px"><button class="btn" id="startConsult">Connect (Simulated)</button></div>
+      </div>
+      <div style="flex:1" class="card" id="consultPanel">
+        <h3>Consult Status</h3>
+        <div id="consultStatus" class="muted">No active consultation</div>
+      </div>
+    </div>
+  `)
+
+  document.getElementById('startConsult').addEventListener('click', ()=>{
+    const pIndex = document.getElementById('telePatient').value; if(!pIndex) return alert('Select a patient');
+    const reason = document.getElementById('teleReason').value||'General';
+    const p = loadPatients()[pIndex]; addLocalLog(`Teleconsult requested for ${p.name} — ${reason}`); document.getElementById('consultStatus').innerText = `Connecting to doctor for ${p.name}... (simulated)`;
+    setTimeout(()=>{ document.getElementById('consultStatus').innerText = `Doctor connected — prescription sent to local record.`; // simulate prescription
+      const patients = loadPatients(); patients[pIndex].prescription = `Paracetamol 500mg, 3 days — ${reason}`; savePatients(patients); addLocalLog('Prescription saved locally for '+p.name); updateCounts(); },2000);
+  })
+}
+
+/* ------------------- Sync Flow ------------------- */
+function renderSync(){
+  const logs = JSON.parse(localStorage.getItem(dbKey('logs'))||'[]');
+  render(`
+    <h2>Sync & Logs</h2>
+    <div class="muted">Status: <strong id="syncIndicator">${navigator.onLine? 'Online':'Offline'}</strong></div>
+    <div style="margin-top:12px" class="card">
+      <h3>Manual Sync</h3>
+      <div>Click to attempt sending local records to server (demo: will just mark synced locally)</div>
+      <div style="margin-top:8px"><button class="btn" id="manualSyncBtn">Try Sync</button></div>
+    </div>
+
+    <div style="margin-top:12px" class="card">
+      <h3>Recent Logs</h3>
+      ${logs.length?`<ul>${logs.map(l=>`<li>${new Date(l.ts).toLocaleString()} — ${l.msg}</li>`).join('')}</ul>`:'<div class="muted">No logs yet.</div>'}
+    </div>
+  `)
+
+  document.getElementById('manualSyncBtn').addEventListener('click', ()=>{ trySync(true) })
+}
+
+// Simulated sync — in real app call backend API & then mark synced
+async function trySync(force=false){
+  const online = navigator.onLine;
+  if(!online && !force){ addLocalLog('Auto-sync skipped (offline)'); return }
+  const patients = loadPatients(); if(patients.length===0){ addLocalLog('No patient data to sync'); alert('Nothing to sync'); return }
+  // Simulate network upload delay
+  addLocalLog('Starting sync of '+patients.length+' records');
+  // In real implementation: POST to server, handle conflicts, encryption, ack IDs
+  await new Promise(r=>setTimeout(r,1200));
+  // Mark all as synced by adding syncedAt timestamp on local copy
+  const now = new Date().toISOString();
+  const updated = patients.map(p=>({...p,syncedAt:now})); savePatients(updated); localStorage.setItem(dbKey('lastSync'), now); addLocalLog('Sync completed: '+now);
+  alert('Sync simulated: records marked as synced locally. In production this would upload to central server.');
+  updateCounts();
+}
+
+/* ------------------- Settings ------------------- */
+function renderSettings(){
+  const lang = localStorage.getItem(dbKey('lang'))||'en';
+  render(`
+    <h2>Settings</h2>
+    <label>Language</label>
+    <select id="languageSelect"><option value="en">English</option><option value="hi">हिन्दी</option></select>
+    <label>Enable Notifications</label>
+    <div><button class="btn" id="notifReq">Request Permission</button></div>
+    <div style="margin-top:12px" class="muted">Reminder demo: create a vaccination reminder when registering a patient.</div>
+  `)
+  document.getElementById('languageSelect').value = lang;
+  document.getElementById('languageSelect').addEventListener('change', e=>{ localStorage.setItem(dbKey('lang'), e.target.value); alert('Language changed (UI text toggles). Reload to see full effect'); })
+  document.getElementById('notifReq').addEventListener('click', ()=>{ if('Notification' in window){ Notification.requestPermission().then(p=>alert('Permission: '+p)) }else alert('Notifications not supported') })
+}
+
+/* ------------------- Utilities ------------------- */
+function updateCounts(){ document.getElementById('localCount').innerText = loadPatients().length; document.getElementById('onlineStatus').innerText = navigator.onLine? 'Online':'Offline'; }
+
+// Voice input using Web Speech API (if available)
+let recognition = null;
+function initVoice(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  if(!SpeechRecognition) return false;
+  recognition = new SpeechRecognition(); recognition.lang = (localStorage.getItem(dbKey('lang'))==='hi')? 'hi-IN' : 'en-IN'; recognition.interimResults = false; recognition.maxAlternatives = 1;
+  recognition.onresult = (ev)=>{
+    const text = ev.results[0][0].transcript; const notes = document.getElementById('notes'); if(notes) notes.value = notes.value + '\n' + text; addLocalLog('Voice input captured');
+  }
+  recognition.onerror = (e)=>{ console.error('Voice error',e); alert('Voice input error: '+e.error) }
+  return true;
+}
+
+document.getElementById('voiceBtn').addEventListener('click', ()=>{
+  if(!recognition){ const ok = initVoice(); if(!ok){ return alert('Voice input not supported in this browser'); } }
+  try{ recognition.start(); }catch(e){ console.warn(e); }
+});
+
+// Export data (download JSON)
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const data = JSON.stringify(loadPatients(), null, 2); const blob = new Blob([data],{type:'application/json'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'sehat_mitra_patients.json'; a.click(); URL.revokeObjectURL(url);
+});
+
+/* ------------------- Demo login & roles ------------------- */
+function demoLogin(role){ localStorage.setItem(dbKey('userRole'), role); document.getElementById('userRoleDisplay').innerHTML = `<strong>${role.toUpperCase()}</strong>`; addLocalLog('Demo login: '+role); alert('Logged in as '+role); }
+document.getElementById('logoutBtn').addEventListener('click', ()=>{ localStorage.removeItem(dbKey('userRole')); document.getElementById('userRoleDisplay').innerHTML = '<strong>Guest</strong>'; addLocalLog('Logged out'); })
+
+/* ------------------- Connectivity watch ------------------- */
+window.addEventListener('online', ()=>{ addLocalLog('Network online'); updateCounts(); trySync(); });
+window.addEventListener('offline', ()=>{ addLocalLog('Network offline'); updateCounts(); });
+
+// Init
+(function init(){
+  // Load last sync
+  document.querySelectorAll('.menu button')[0].classList.add('active');
+  const role = localStorage.getItem(dbKey('userRole'))||'Guest'; document.getElementById('userRoleDisplay').innerHTML = `<strong>${role}</strong>`;
+  const lastSync = localStorage.getItem(dbKey('lastSync'))||'--'; if(lastSync!=='--') document.getElementById('lastSync') && (document.getElementById('lastSync').innerText = new Date(lastSync).toLocaleString());
+  updateCounts(); navigate('dashboard');
+  // Auto-init voice if available
+  initVoice();
+  addLocalLog('App initialized');
+
+  // Use service worker registration hint (not implemented here) for real offline caching
+  if('serviceWorker' in navigator){ console.log('Service worker supported — register in production for offline caching & background sync') }
+})();
+
+/* ------------------- Notes for integration (comments for SIH report) ------------------- */
+/*
+  Integration pointers for real product:
+  1. Backend APIs: Implement secure REST API endpoints with token-based auth. Use HTTPS.
+  2. Encryption: Encrypt local data at rest using device keystore or AES with user-derived keys.
+  3. Sync: Use background sync / WorkManager (Android) to upload records reliably. Implement conflict resolution & record-level ack.
+  4. NDHM/Health ID: Integrate with NDHM APIs for patient identity & records (consent flows required).
+  5. Telemedicine: Integrate Jitsi/Agora/WebRTC for real-time video/audio.
+  6. Localization: Provide full i18n resource bundles, right-to-left support if needed.
+  7. Accessibility: Ensure large touch targets, offline help, and easily readable fonts for low-literacy users.
+*/
+
+  </script>
+</body>
+</html>
